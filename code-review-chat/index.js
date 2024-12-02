@@ -65,6 +65,11 @@ class CodeReviewChatAction extends Action_1.Action {
         if (!payload.pull_request || !payload.repository) {
             throw Error('expected payload to contain pull request url');
         }
+        if (payload.pull_request.state === 'closed') {
+            // PR was merged and a review was submitted after merge. Skip posting message
+            (0, utils_1.safeLog)(`PR was already merged. Skipping posting message`);
+            return;
+        }
         const toolsAPI = new vscodeTools_1.VSCodeToolsAPIManager();
         const teamMembers = new Set((await toolsAPI.getTeamMembers()).map((t) => t.id));
         const auth = await this.getToken();
@@ -80,7 +85,7 @@ class CodeReviewChatAction extends Action_1.Action {
         const author = payload.pull_request.user.login;
         if (!teamMembers.has(author) && ((_a = payload.pull_request.user) === null || _a === void 0 ? void 0 : _a.type) !== 'Bot') {
             (0, utils_1.safeLog)('PR author is not in the team, checking if they need to be posted for another review');
-            const teamMemberReviews = await (0, CodeReviewChat_1.getTeamMemberReviews)(github, teamMembers, payload.pull_request.number, payload.repository.name, payload.repository.owner.login, issue);
+            const teamMemberReviews = await (0, CodeReviewChat_1.getTeamMemberReviews)(github, teamMembers, payload.pull_request.number, payload.repository.name, payload.repository.owner.login, issue, true /* isExternalPR */);
             (0, utils_1.safeLog)(`Found ${(_b = teamMemberReviews === null || teamMemberReviews === void 0 ? void 0 : teamMemberReviews.length) !== null && _b !== void 0 ? _b : 0} reviews from team members`);
             // Get only the approving reviews from team members
             const approvingReviews = teamMemberReviews === null || teamMemberReviews === void 0 ? void 0 : teamMemberReviews.filter((review) => {
